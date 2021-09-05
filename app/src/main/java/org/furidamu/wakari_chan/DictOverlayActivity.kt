@@ -16,6 +16,7 @@ import androidx.core.view.allViews
 import androidx.core.view.isEmpty
 import org.w3c.dom.Text
 import java.io.File
+import java.lang.Integer.min
 import kotlin.math.roundToInt
 
 val TAG = "WakariChan";
@@ -61,7 +62,7 @@ class DictOverlayActivity : Activity() {
         addMatches(text, kind, translations, dict);
 
         // Also query all prefixes that contain kanji.
-        for (len in text.length downTo 1) {
+        for (len in min(text.length, 15) downTo 1) {
             val s = text.substring(0, len);
             if (s.codePoints().anyMatch { c -> c in 0x4e00..0x9fbf }) {
                 addMatches(s, kind, translations, dict);
