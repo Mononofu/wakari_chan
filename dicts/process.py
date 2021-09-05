@@ -35,3 +35,7 @@ con.commit()
 
 with zipfile.ZipFile(os.path.join(directory, 'jmdict_english.zip')) as f:
   load_jmdict(f, con)
+
+
+cur.execute('CREATE INDEX translations_index ON translations(word)')
+con.commit()
