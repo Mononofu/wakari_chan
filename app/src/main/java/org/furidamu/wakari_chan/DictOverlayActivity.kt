@@ -14,6 +14,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import org.w3c.dom.Text
 import java.io.File
+import kotlin.math.roundToInt
 
 val TAG = "WakariChan";
 
@@ -33,6 +34,7 @@ class DictOverlayActivity : Activity() {
 
             val scroll = ScrollView(this);
             scroll.addView(translation);
+            scroll.minimumWidth = (resources.displayMetrics.widthPixels * 0.9).roundToInt();
 
             // Use the Builder class for convenient dialog construction
             val builder = AlertDialog.Builder(this)
