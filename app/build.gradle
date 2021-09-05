@@ -8,7 +8,7 @@ android {
 
     defaultConfig {
         applicationId "org.furidamu.wakari_chan"
-        minSdk 23
+        minSdk 27
         targetSdk 31
         versionCode 1
         versionName "1.0"
