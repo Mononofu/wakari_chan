@@ -55,7 +55,7 @@ class DictOverlayActivity : Activity() {
 
     fun translate(text: String, dict: SQLiteDatabase): View {
         val kind = LinkedHashMap<Entry, String>();
-        val translations = LinkedHashMap<Entry, ArrayList<String>>();
+        val translations = LinkedHashMap<Entry, String>();
 
         // Always try to query the exact string.
         addMatches(text, kind, translations, dict);
@@ -100,14 +100,7 @@ class DictOverlayActivity : Activity() {
 
             alertView.addView(japanese);
 
-            var explanation = "(${kind.get(entry)})";
-            if (english.size > 1) {
-                english.forEachIndexed { i, e ->
-                    explanation += " ($i) $e";
-                }
-            } else {
-                explanation += " ${english[0]}";
-            }
+            var explanation = "(${kind.get(entry)}) $english";
 
             val translationView = TextView(this);
             translationView.text = explanation;
@@ -122,9 +115,10 @@ class DictOverlayActivity : Activity() {
     fun addMatches(
         term: String,
         kind: LinkedHashMap<Entry, String>,
-        translations: LinkedHashMap<Entry, ArrayList<String>>,
+        translations: LinkedHashMap<Entry, String>,
         dict: SQLiteDatabase
     ) {
+        val rawTranslations = LinkedHashMap<String, ArrayList<String>>();
         val c = dict.rawQuery(
             "SELECT reading, kind, english FROM translations where word = ? ORDER BY priority DESC LIMIT 100",
             arrayOf(term)
@@ -139,9 +133,30 @@ class DictOverlayActivity : Activity() {
             val english = c.getString(englishCol)
             val entry = Entry(term, reading);
 
-            translations.computeIfAbsent(entry) { _ -> arrayListOf<String>() };
-            translations[entry]!!.add(english);
+            rawTranslations.computeIfAbsent(reading) { _ -> arrayListOf<String>() };
+            rawTranslations[reading]!!.add(english);
             kind.putIfAbsent(entry, c.getString(kindCol));
+        }
+
+        val synonyms = LinkedHashMap<String, ArrayList<String>>();
+        for ((reading, english) in rawTranslations) {
+            // Combine all translations into a single string.
+            val translations = if (english.size > 1) {
+                english.mapIndexed { i, e -> "($i) $e"; }.joinToString(" ")
+            } else {
+                english[0]
+            }
+
+            // Group readings by their translation, to find synonyms.
+            synonyms.computeIfAbsent(translations) { _ -> arrayListOf<String>() };
+            synonyms[translations]!!.add(reading);
+        }
+
+        for ((translation, readings) in synonyms) {
+            val allReadings = readings.joinToString(", ")
+            val entry = Entry(term, allReadings)
+            translations[entry] = translation
+            kind[entry] = kind[Entry(term, readings.get(0))] ?: ""
         }
     }
 
