@@ -46,6 +46,7 @@ class DictOverlayActivity : Activity() {
         val englishCol = c.getColumnIndex("english")
         val kindCol = c.getColumnIndex("kind");
 
+        // Read match results from the database.
         val kind = LinkedHashMap<String, String>();
         val translations = LinkedHashMap<String, ArrayList<String>>();
         while (c.moveToNext()) {
@@ -57,11 +58,20 @@ class DictOverlayActivity : Activity() {
             kind.putIfAbsent(reading, c.getString(kindCol));
         }
 
-
+        // Build the view to show the translations.
         val alertView = LinearLayout(this);
         alertView.setOrientation(LinearLayout.VERTICAL);
         alertView.setPadding(20, 10, 10, 20);
 
+        if (translations.isEmpty()) {
+            val msg = TextView(this);
+            msg.text = "No results for query '$text";
+            msg.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20.0f);
+            alertView.addView(msg);
+            return alertView;
+        }
+
+        // Add one "card" per reading.
         var i = 0;
         for ((reading, english) in translations) {
             val wordView = TextView(this);
