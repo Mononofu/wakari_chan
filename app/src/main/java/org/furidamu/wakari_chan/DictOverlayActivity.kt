@@ -12,6 +12,8 @@ import android.view.View
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import androidx.core.view.allViews
+import androidx.core.view.isEmpty
 import org.w3c.dom.Text
 import java.io.File
 import kotlin.math.roundToInt
@@ -39,7 +41,7 @@ class DictOverlayActivity : Activity() {
             // Use the Builder class for convenient dialog construction
             val builder = AlertDialog.Builder(this)
             builder.setView(scroll)
-                .setOnDismissListener(DialogInterface.OnDismissListener { dialog -> finish(); })
+                .setOnDismissListener(DialogInterface.OnDismissListener { _ -> finish(); })
             builder.show()
 
         }
@@ -74,7 +76,6 @@ class DictOverlayActivity : Activity() {
         }
 
         // Add one "card" per reading.
-        var i = 0;
         for ((entry, english) in translations) {
             val wordView = TextView(this);
             wordView.text = entry.term;
@@ -89,7 +90,7 @@ class DictOverlayActivity : Activity() {
             val japanese = LinearLayout(this);
             japanese.addView(wordView);
             japanese.addView(readingView);
-            japanese.setPadding(0, if (i == 0) 0 else 20, 0, 6);
+            japanese.setPadding(0, if (alertView.isEmpty()) 0 else 20, 0, 6);
 
             alertView.addView(japanese);
 
@@ -107,8 +108,6 @@ class DictOverlayActivity : Activity() {
             translationView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16.0f);
 
             alertView.addView(translationView);
-
-            ++i;
         }
 
         return alertView;
@@ -134,7 +133,7 @@ class DictOverlayActivity : Activity() {
             val english = c.getString(englishCol)
             val entry = Entry(term, reading);
 
-            translations.computeIfAbsent(entry) { k -> arrayListOf<String>() };
+            translations.computeIfAbsent(entry) { _ -> arrayListOf<String>() };
             translations[entry]!!.add(english);
             kind.putIfAbsent(entry, c.getString(kindCol));
         }
