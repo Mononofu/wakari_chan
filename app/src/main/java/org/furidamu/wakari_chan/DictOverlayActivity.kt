@@ -28,23 +28,29 @@ class DictOverlayActivity : Activity() {
         super.onCreate(savedInstanceState)
 
         if (intent.action == Intent.ACTION_PROCESS_TEXT) {
-            val selectedText = intent.getStringExtra(Intent.EXTRA_PROCESS_TEXT) ?: ""
-            Log.i("WakariChan", "$selectedText \n\n Text Length is: ${selectedText.length}");
-
-            val db = openDb();
-            val translation = translate(selectedText, db);
-
-            val scroll = ScrollView(this);
-            scroll.addView(translation);
-            scroll.minimumWidth = (resources.displayMetrics.widthPixels * 0.9).roundToInt();
-
-            // Use the Builder class for convenient dialog construction
-            val builder = AlertDialog.Builder(this)
-            builder.setView(scroll)
-                .setOnDismissListener(DialogInterface.OnDismissListener { _ -> finish(); })
-            builder.show()
-
+            val text = intent.getStringExtra(Intent.EXTRA_PROCESS_TEXT) ?: ""
+            Log.i(TAG, "$text");
+            showTranslation(text);
+        } else if (intent.action == Intent.ACTION_SEND) {
+            val text = intent.getStringExtra(Intent.EXTRA_TEXT) ?: ""
+            Log.i(TAG, "$text");
+            showTranslation(text);
         }
+    }
+
+    fun showTranslation(text: String) {
+        val db = openDb();
+        val translation = translate(text, db);
+
+        val scroll = ScrollView(this);
+        scroll.addView(translation);
+        scroll.minimumWidth = (resources.displayMetrics.widthPixels * 0.9).roundToInt();
+
+        // Use the Builder class for convenient dialog construction
+        val builder = AlertDialog.Builder(this)
+        builder.setView(scroll)
+            .setOnDismissListener(DialogInterface.OnDismissListener { _ -> finish(); })
+        builder.show()
     }
 
     fun translate(text: String, dict: SQLiteDatabase): View {
