@@ -42,4 +42,7 @@
         </activity>
     </application>
 
+    <queries>
+        <package android:name="com.ichi2.anki" />
+    </queries>
 </manifest>

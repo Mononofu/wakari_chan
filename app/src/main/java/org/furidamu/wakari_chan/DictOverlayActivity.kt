@@ -2,28 +2,29 @@ package org.furidamu.wakari_chan
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.database.sqlite.SQLiteDatabase
 import android.os.Bundle
 import android.util.Log
 import android.util.TypedValue
 import android.view.View
-import android.widget.Button
-import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.TextView
-import androidx.core.view.allViews
+import android.widget.*
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.core.view.isEmpty
-import org.w3c.dom.Text
+import com.ichi2.anki.api.AddContentApi
 import java.io.File
 import java.lang.Integer.min
 import kotlin.math.roundToInt
 
-val TAG = "WakariChan";
+const val TAG = "WakariChan"
+const val ANKI_PERM_REQUEST = 3212
 
 // A japanese term (possibly containing kanji) and its reading in hiragana / katakana.
-data class Entry(val term: String, val reading: String);
+data class Entry(val term: String, val reading: String)
 
 class DictOverlayActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -31,12 +32,30 @@ class DictOverlayActivity : Activity() {
 
         if (intent.action == Intent.ACTION_PROCESS_TEXT) {
             val text = intent.getStringExtra(Intent.EXTRA_PROCESS_TEXT) ?: ""
-            Log.i(TAG, "$text");
-            showTranslation(text);
+            showTranslation(text)
         } else if (intent.action == Intent.ACTION_SEND) {
             val text = intent.getStringExtra(Intent.EXTRA_TEXT) ?: ""
-            Log.i(TAG, "$text");
-            showTranslation(text);
+            showTranslation(text)
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        if (requestCode == ANKI_PERM_REQUEST && !grantResults.isEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(
+                this,
+                "Permission granted, please try to add to Anki again",
+                Toast.LENGTH_LONG
+            )
+        } else {
+            Toast.makeText(
+                this,
+                "Permission denied. Without this, it's not possible to add cards to anki.",
+                Toast.LENGTH_LONG
+            )
         }
     }
 
@@ -95,23 +114,23 @@ class DictOverlayActivity : Activity() {
             readingView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20.0f);
             readingView.setTextColor(0xffb6d7a8.toInt()); // light green
 
-            val ankiButton = Button(this, null, R.attr.borderlessButtonStyle);
-            ankiButton.text = "[+ Anki]"
-            ankiButton.setOnClickListener { v -> Log.i(TAG, "clicked") }
-            ankiButton.setPadding(10, 0, 0,0)
-
             val japanese = LinearLayout(this);
             japanese.addView(wordView);
             japanese.addView(readingView);
-            japanese.addView(ankiButton)
             japanese.setPadding(0, if (alertView.isEmpty()) 0 else 20, 0, 6);
 
-            alertView.addView(japanese);
+            if (hasAnki()) {
+                val ankiButton = Button(this, null, R.attr.borderlessButtonStyle)
+                ankiButton.text = "[+ Anki]"
+                ankiButton.setOnClickListener { _ -> addToAnki(entry, english); }
+                ankiButton.setPadding(10, 0, 0, 0)
+                japanese.addView(ankiButton)
+            }
 
-            var explanation = "(${kind.get(entry)}) $english";
+            alertView.addView(japanese)
 
             val translationView = TextView(this);
-            translationView.text = explanation;
+            translationView.text = "(${kind.get(entry)}) $english"
             translationView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16.0f);
 
             alertView.addView(translationView);
@@ -182,5 +201,106 @@ class DictOverlayActivity : Activity() {
 
     fun dbPath(): String {
         return cacheDir.absolutePath + "/dict.db";
+    }
+
+    fun hasAnki(): Boolean {
+        return AddContentApi.getAnkiDroidPackageName(this) != null;
+    }
+
+    fun addToAnki(entry: Entry, english: String) {
+        if (ContextCompat.checkSelfPermission(
+                this,
+                AddContentApi.READ_WRITE_PERMISSION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(AddContentApi.READ_WRITE_PERMISSION),
+                ANKI_PERM_REQUEST
+            )
+        }
+
+        val anki = AnkiHelper(this);
+        val deck = anki.deck("Japanese::Wakari-chan"); // Get deck name from settings.
+        val model = anki.model("Wakari-chan", deck); // Get deck name from settings.
+
+        if (anki.add(model, deck, arrayOf("k_${entry.term}", entry.term, entry.reading, english))) {
+            Toast.makeText(this, "Added card to Anki Deck!", Toast.LENGTH_LONG)
+        } else {
+            Toast.makeText(this, "Failed to add card to Anki", Toast.LENGTH_LONG)
+        }
+    }
+}
+
+const val FRONT_TEMPLATE = """
+<div class="ja">
+{{#japanese}}{{japanese}}{{/japanese}}
+</div>
+"""
+
+const val BACK_TEMPLATE = """
+{{FrontSide}}
+
+<hr id=answer>
+
+<div class="reading">{{reading}}</div>
+<div class="meaning">{{meaning}}</div>
+
+<script>
+var numRepetitions = 6;
+function checkScroll() {
+  numRepetitions -= 1;
+  window.scrollTo(0, 0);
+  if (numRepetitions > 0) {
+    setTimeout(checkScroll, 50);
+  }
+}
+document.addEventListener('DOMContentLoaded', checkScroll, false);
+
+</script>
+"""
+
+const val CSS = """
+.card {
+ font-family: arial;
+ font-size: 18px;
+ text-align: center;
+ color: black;
+ background-color: white;
+}
+
+.ja {
+    color: #fff;
+    font-size: 6em;
+    font-weight: normal;
+    line-height: 1.3em;
+    background-color: #a000f1;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.25) inset;
+    text-shadow: 5px 5px 0 #9300dd;
+}
+"""
+
+class AnkiHelper(val context: Context) {
+    val api = AddContentApi(context)
+
+    fun deck(name: String): Long {
+        for ((id, deckName) in api.deckList) {
+            if (name.equals(deckName, ignoreCase = true)) return id
+        }
+        return api.addNewDeck(name)
+    }
+
+    fun model(name: String, deck: Long): Long {
+        for ((id, modelName) in api.modelList) {
+            if (name.equals(modelName, ignoreCase = true)) return id
+        }
+        return api.addNewCustomModel(
+            name, arrayOf("key", "japanese", "reading", "meaning"), arrayOf("card"),
+            arrayOf(FRONT_TEMPLATE), arrayOf(BACK_TEMPLATE), CSS, deck, 0
+        )
+    }
+
+    fun add(model: Long, deck: Long, fields: Array<String>): Boolean {
+        return api.addNote(model, deck, fields, HashSet()) != null
     }
 }
