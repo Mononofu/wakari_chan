@@ -1,9 +1,9 @@
 package org.furidamu.wakari_chan
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
-import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.database.sqlite.SQLiteDatabase
@@ -44,170 +44,171 @@ class DictOverlayActivity : Activity() {
         permissions: Array<out String>,
         grantResults: IntArray
     ) {
-        if (requestCode == ANKI_PERM_REQUEST && !grantResults.isEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+        if (requestCode == ANKI_PERM_REQUEST && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             Toast.makeText(
                 this,
                 "Permission granted, please try to add to Anki again",
                 Toast.LENGTH_LONG
-            )
+            ).show()
         } else {
             Toast.makeText(
                 this,
                 "Permission denied. Without this, it's not possible to add cards to anki.",
                 Toast.LENGTH_LONG
-            )
+            ).show()
         }
     }
 
-    fun showTranslation(text: String) {
-        val db = openDb();
-        val translation = translate(text, db);
+    private fun showTranslation(text: String) {
+        val db = openDb()
+        val translation = translate(text, db)
 
-        val scroll = ScrollView(this);
-        scroll.addView(translation);
-        scroll.minimumWidth = (resources.displayMetrics.widthPixels * 0.9).roundToInt();
+        val scroll = ScrollView(this)
+        scroll.addView(translation)
+        scroll.minimumWidth = (resources.displayMetrics.widthPixels * 0.9).roundToInt()
 
         // Use the Builder class for convenient dialog construction
         val builder = AlertDialog.Builder(this)
-        builder.setView(scroll)
-            .setOnDismissListener(DialogInterface.OnDismissListener { _ -> finish(); })
+        builder.setView(scroll).setOnDismissListener { finish() }
         builder.show()
     }
 
-    fun translate(text: String, dict: SQLiteDatabase): View {
-        val kind = LinkedHashMap<Entry, String>();
-        val translations = LinkedHashMap<Entry, String>();
+    @SuppressLint("SetTextI18n")
+    private fun translate(text: String, dict: SQLiteDatabase): View {
+        val kind = LinkedHashMap<Entry, String>()
+        val translations = LinkedHashMap<Entry, String>()
 
         // Always try to query the exact string.
-        addMatches(text, kind, translations, dict);
+        addMatches(text, kind, translations, dict)
 
         // Also query all prefixes that contain kanji.
         for (len in min(text.length, 15) downTo 1) {
-            val s = text.substring(0, len);
+            val s = text.substring(0, len)
             if (s.codePoints().anyMatch { c -> c in 0x4e00..0x9fbf }) {
-                addMatches(s, kind, translations, dict);
+                addMatches(s, kind, translations, dict)
             }
         }
 
         // Build the view to show the translations.
-        val alertView = LinearLayout(this);
-        alertView.orientation = LinearLayout.VERTICAL;
-        alertView.setPadding(20, 10, 10, 20);
+        val alertView = LinearLayout(this)
+        alertView.orientation = LinearLayout.VERTICAL
+        alertView.setPadding(20, 10, 10, 20)
 
         if (translations.isEmpty()) {
-            val msg = TextView(this);
-            msg.text = "No results for query '$text'";
-            msg.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20.0f);
-            alertView.addView(msg);
-            return alertView;
+            val msg = TextView(this)
+            msg.text = "No results for query '$text'"
+            msg.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20.0f)
+            alertView.addView(msg)
+            return alertView
         }
 
         // Add one "card" per reading.
         for ((entry, english) in translations) {
-            val wordView = TextView(this);
-            wordView.text = entry.term;
-            wordView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20.0f);
-            wordView.setTextColor(0xff9fc5e8.toInt()); // light blue
+            val wordView = TextView(this)
+            wordView.text = entry.term
+            wordView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20.0f)
+            wordView.setTextColor(0xff9fc5e8.toInt()) // light blue
 
-            val readingView = TextView(this);
-            readingView.text = "  ${entry.reading}";
-            readingView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20.0f);
-            readingView.setTextColor(0xffb6d7a8.toInt()); // light green
+            val readingView = TextView(this)
+            readingView.text = "  ${entry.reading}"
+            readingView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20.0f)
+            readingView.setTextColor(0xffb6d7a8.toInt()) // light green
 
-            val japanese = LinearLayout(this);
-            japanese.addView(wordView);
-            japanese.addView(readingView);
-            japanese.setPadding(0, if (alertView.isEmpty()) 0 else 20, 0, 6);
+            val japanese = LinearLayout(this)
+            japanese.addView(wordView)
+            japanese.addView(readingView)
+            japanese.setPadding(0, if (alertView.isEmpty()) 0 else 20, 0, 6)
 
             if (hasAnki()) {
                 val ankiButton = Button(this, null, R.attr.borderlessButtonStyle)
                 ankiButton.text = "[+ Anki]"
-                ankiButton.setOnClickListener { _ -> addToAnki(entry, english); }
+                ankiButton.setOnClickListener { addToAnki(entry, english); }
                 ankiButton.setPadding(10, 0, 0, 0)
                 japanese.addView(ankiButton)
             }
 
             alertView.addView(japanese)
 
-            val translationView = TextView(this);
-            translationView.text = "(${kind.get(entry)}) $english"
-            translationView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16.0f);
+            val translationView = TextView(this)
+            translationView.text = "(${kind[entry]}) $english"
+            translationView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16.0f)
 
-            alertView.addView(translationView);
+            alertView.addView(translationView)
         }
 
-        return alertView;
+        return alertView
     }
 
-    fun addMatches(
+    private fun addMatches(
         term: String,
         kind: LinkedHashMap<Entry, String>,
         translations: LinkedHashMap<Entry, String>,
         dict: SQLiteDatabase
     ) {
-        val rawTranslations = LinkedHashMap<String, ArrayList<String>>();
+        val rawTranslations = LinkedHashMap<String, ArrayList<String>>()
         val c = dict.rawQuery(
             "SELECT reading, kind, english FROM translations where word = ? ORDER BY priority DESC LIMIT 100",
             arrayOf(term)
         )
         val readingCol = c.getColumnIndex("reading")
         val englishCol = c.getColumnIndex("english")
-        val kindCol = c.getColumnIndex("kind");
+        val kindCol = c.getColumnIndex("kind")
 
         // Read match results from the database.
         while (c.moveToNext()) {
             val reading = c.getString(readingCol)
             val english = c.getString(englishCol)
-            val entry = Entry(term, reading);
+            val entry = Entry(term, reading)
 
-            rawTranslations.computeIfAbsent(reading) { _ -> arrayListOf<String>() };
-            rawTranslations[reading]!!.add(english);
-            kind.putIfAbsent(entry, c.getString(kindCol));
+            rawTranslations.computeIfAbsent(reading) { arrayListOf() }
+            rawTranslations[reading]!!.add(english)
+            kind.putIfAbsent(entry, c.getString(kindCol))
         }
+        c.close()
 
-        val synonyms = LinkedHashMap<String, ArrayList<String>>();
+        val synonyms = LinkedHashMap<String, ArrayList<String>>()
         for ((reading, english) in rawTranslations) {
             // Combine all translations into a single string.
-            val translations = if (english.size > 1) {
+            val combinedEngish = if (english.size > 1) {
                 english.mapIndexed { i, e -> "($i) $e"; }.joinToString(" ")
             } else {
                 english[0]
             }
 
             // Group readings by their translation, to find synonyms.
-            synonyms.computeIfAbsent(translations) { _ -> arrayListOf<String>() };
-            synonyms[translations]!!.add(reading);
+            synonyms.computeIfAbsent(combinedEngish) { arrayListOf() }
+            synonyms[combinedEngish]!!.add(reading)
         }
 
         for ((translation, readings) in synonyms) {
             val allReadings = readings.joinToString(", ")
             val entry = Entry(term, allReadings)
             translations[entry] = translation
-            kind[entry] = kind[Entry(term, readings.get(0))] ?: ""
+            kind[entry] = kind[Entry(term, readings[0])] ?: ""
         }
     }
 
-    fun openDb(): SQLiteDatabase {
-        val dbFile = File(dbPath());
+    private fun openDb(): SQLiteDatabase {
+        val dbFile = File(dbPath())
         if (!dbFile.exists()) {
-            Log.i(TAG, "first execution, copying db");
-            assets.open("dict.db").copyTo(dbFile.outputStream());
+            Log.i(TAG, "first execution, copying db")
+            assets.open("dict.db").copyTo(dbFile.outputStream())
         }
         return SQLiteDatabase.openDatabase(
             dbPath(), null,
             SQLiteDatabase.OPEN_READONLY
-        );
+        )
     }
 
-    fun dbPath(): String {
-        return cacheDir.absolutePath + "/dict.db";
+    private fun dbPath(): String {
+        return cacheDir.absolutePath + "/dict.db"
     }
 
-    fun hasAnki(): Boolean {
-        return AddContentApi.getAnkiDroidPackageName(this) != null;
+    private fun hasAnki(): Boolean {
+        return AddContentApi.getAnkiDroidPackageName(this) != null
     }
 
-    fun addToAnki(entry: Entry, english: String) {
+    private fun addToAnki(entry: Entry, english: String) {
         if (ContextCompat.checkSelfPermission(
                 this,
                 AddContentApi.READ_WRITE_PERMISSION
@@ -220,14 +221,14 @@ class DictOverlayActivity : Activity() {
             )
         }
 
-        val anki = AnkiHelper(this);
-        val deck = anki.deck("Japanese::Wakari-chan"); // Get deck name from settings.
-        val model = anki.model("Wakari-chan", deck); // Get deck name from settings.
+        val anki = AnkiHelper(this)
+        val deck = anki.deck("Japanese::Wakari-chan") // Get deck name from settings.
+        val model = anki.model("Wakari-chan", deck) // Get deck name from settings.
 
         if (anki.add(model, deck, arrayOf("k_${entry.term}", entry.term, entry.reading, english))) {
-            Toast.makeText(this, "Added card to Anki Deck!", Toast.LENGTH_LONG)
+            Toast.makeText(this, "Added card to Anki Deck!", Toast.LENGTH_LONG).show()
         } else {
-            Toast.makeText(this, "Failed to add card to Anki", Toast.LENGTH_LONG)
+            Toast.makeText(this, "Failed to add card to Anki", Toast.LENGTH_LONG).show()
         }
     }
 }
@@ -280,8 +281,8 @@ const val CSS = """
 }
 """
 
-class AnkiHelper(val context: Context) {
-    val api = AddContentApi(context)
+class AnkiHelper(context: Context) {
+    private val api = AddContentApi(context)
 
     fun deck(name: String): Long {
         for ((id, deckName) in api.deckList) {
