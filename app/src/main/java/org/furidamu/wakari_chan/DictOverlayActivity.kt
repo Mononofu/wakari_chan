@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.util.Log
 import android.util.TypedValue
 import android.view.View
+import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -94,9 +95,15 @@ class DictOverlayActivity : Activity() {
             readingView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20.0f);
             readingView.setTextColor(0xffb6d7a8.toInt()); // light green
 
+            val ankiButton = Button(this, null, R.attr.borderlessButtonStyle);
+            ankiButton.text = "[+ Anki]"
+            ankiButton.setOnClickListener { v -> Log.i(TAG, "clicked") }
+            ankiButton.setPadding(10, 0, 0,0)
+
             val japanese = LinearLayout(this);
             japanese.addView(wordView);
             japanese.addView(readingView);
+            japanese.addView(ankiButton)
             japanese.setPadding(0, if (alertView.isEmpty()) 0 else 20, 0, 6);
 
             alertView.addView(japanese);
