@@ -5,6 +5,7 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.database.sqlite.SQLiteDatabase
 import android.os.Bundle
@@ -222,7 +223,8 @@ class DictOverlayActivity : Activity() {
         }
 
         val anki = AnkiHelper(this)
-        val deck = anki.deck("Japanese::Wakari-chan") // Get deck name from settings.
+        val deckName = getSharedPreferences("root", 0).getString("deck_name", "Japanese::Wakari-chan")
+        val deck = anki.deck(deckName!!) // Get deck name from settings.
         val model = anki.model("Wakari-chan", deck) // Get deck name from settings.
 
         if (anki.add(model, deck, arrayOf("k_${entry.term}", entry.term, entry.reading, english))) {

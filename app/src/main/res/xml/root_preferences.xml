@@ -12,13 +12,21 @@ a word, tap and hold, then select Wakari-chan from the context menu.\nBased on Y
 
     </PreferenceCategory>
 
-    <PreferenceCategory app:title="Anki">
+    <PreferenceCategory app:title="Anki Integration">
+        <Preference
+            app:key="pref_static_field_key_2"
+            app:persistent="false"
+            app:selectable="false"
+            app:summary="If AnkiDroid is installed, dictionary entries can be exported directly to AnkiDroid as study cards." />
+
+    <EditTextPreference
+        android:defaultValue="Japanese::Wakari-chan"
+        android:key="deck_name"
+        android:selectAllOnFocus="true"
+        android:singleLine="true"
+        android:title="Deck Name" />
 
     </PreferenceCategory>
-    <CheckBoxPreference
-        android:defaultValue="false"
-        android:key="check_box_preference_1"
-        android:title="Show Anki export (not implemented)" />
 
 
 </PreferenceScreen>
